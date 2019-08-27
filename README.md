@@ -1,2 +1,2 @@
 # Wakeful
-ML based sleep detection for drivers.
+CNN based sleep detection for drivers.
