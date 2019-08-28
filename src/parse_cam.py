@@ -2,6 +2,12 @@ import numpy as np
 import cv2
 from facial_detection import detect_face_and_eyes, reshape_eyes_for_model, predict_eyes, EYES_OPEN, EYES_CLOSED
 from generate_eyes_model import generate_model, TRAINED_PATH
+import os
+
+CAPTURED = '../captured/'
+
+if not os.path.isdir(CAPTURED):
+   os.mkdir(CAPTURED)
 
 cap = cv2.VideoCapture(0)
 fps = cap.get(cv2.CAP_PROP_FPS)
@@ -70,7 +76,7 @@ while True:
         break
 
 if ret:
-    out = cv2.VideoWriter('../captured/project.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+    out = cv2.VideoWriter(CAPTURED + 'project.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
     for i in range(len(frames)):
         out.write(frames[i])
     out.release()
