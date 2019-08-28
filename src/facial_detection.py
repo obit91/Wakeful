@@ -1,5 +1,10 @@
 import cv2
-from . import generate_eyes_model
+from generate_eyes_model import WIDTH, HEIGHT, load_trained_model
+import numpy as np
+
+EYES_OPEN = 'open'
+EYES_CLOSED = 'closed'
+
 
 def get_path(file_name): return cv2.data.haarcascades + file_name
 
@@ -17,7 +22,8 @@ def detect_face_and_eyes(img, gray):
     :return: The image along with the coordinates of the eyes.
     """
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-    eyes = None
+    eyes = list()
+    roi_gray = None
     if len(faces) > 0:
         (x, y, w, h) = faces[0]
         cv2.rectangle(img,(x, y), (x+w,y+h), (255, 0, 0), 2)
@@ -26,22 +32,8 @@ def detect_face_and_eyes(img, gray):
         eyes = eye_cascade.detectMultiScale(roi_gray)
         for (ex, ey, ew, eh) in eyes:
             cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (0, 255, 0), 2)
-        return img, eyes
-    return None, None
 
-
-def get_eyes(eyes):
-    """
-    Receives the roi of eyes and returns them only if they are one pair.
-    :param eyes: a list of eye rois.
-    :return: A tuple containing the left and right eyes from a single face.
-    """
-    left_eye = None
-    right_eye = None
-    if len(eyes) == 2:
-        left_eye = eyes[0]
-        right_eye = eyes[1]
-    return left_eye, right_eye
+    return img, roi_gray, eyes
 
 
 def reshape_eyes_for_model(roi_gray, left_eye, right_eye):
@@ -52,14 +44,48 @@ def reshape_eyes_for_model(roi_gray, left_eye, right_eye):
     :param right_eye: The right eye roi.
     :return: The resized left and right eyes, according to the trained model shape.
     """
-    # crop the eye rectangle from the frame
-    ex, ey, ew, eh = left_eye
-    left_eye_rect = roi_gray[ey: ey + eh, ex:ex + ew]
-    left_eye_resized = cv2.resize(left_eye_rect, (generate_eyes_model.WIDTH, generate_eyes_model.HEIGHT))
-
-    ex, ey, ew, eh = right_eye
-    # crop the eye rectangle from the frame
-    right_eye_rect = roi_gray[ey: ey + eh, ex:ex + ew]
-    right_eye_resized = cv2.resize(right_eye_rect, (generate_eyes_model.WIDTH, generate_eyes_model.HEIGHT))
-
+    left_eye_resized = fit_eye_for_cnn(roi_gray, left_eye)
+    right_eye_resized = fit_eye_for_cnn(roi_gray, right_eye, True)
     return left_eye_resized, right_eye_resized
+
+
+def fit_eye_for_cnn(roi_gray, eye, right_ind=False):
+    """
+    Crops the eye to the model shape, normalizes it and returns the eye in the shape trained.
+    :param roi_gray: A roi of the face in grayscale.
+    :param eye: The coordinates of an eye.
+    :param right_ind: If this is a right eye we flip it, since we only trained on left eyes.
+    :return: A resized normalized eye fitting for the model.
+    """
+    # crop the eye rectangle from the frame
+    ex, ey, ew, eh = eye
+    eye_rect = roi_gray[ey: ey + eh, ex:ex + ew]
+    eye_resized = cv2.resize(eye_rect, (WIDTH, HEIGHT))
+    if right_ind:
+        eye_resized = cv2.flip(eye_resized, 1)
+
+    # fit the eyes to the cnn
+    normalized_eye = eye_resized.astype('float32')
+    normalized_eye /= 255
+    normalized_eye = np.expand_dims(normalized_eye, axis=2)
+    normalized_eye = np.expand_dims(normalized_eye, axis=0)
+    return normalized_eye
+
+
+def predict_eyes(trained_model, left_eye, right_eye):
+    """
+    Predicts whether the eyes are open or closed.
+    The prediction is based on the sum of predictions of both the left and the right eyes.
+    :param: trained_model: A trained model that classifies if eyes are closed or open.
+    :param left_eye: The left eye of a grayscale face.
+    :param right_eye: The right eye of a grayscale face.
+    :return: 'open' if the eyes are open, 'closed' otherwise.
+    """
+    left_prediction = trained_model.predict(left_eye)
+    right_prediction = trained_model.predict(right_eye)
+    # print('[left, right]: [%s %s]' % (left_prediction, right_prediction))
+    if left_prediction + right_prediction > 0.2:
+        return EYES_OPEN
+    else:
+        return EYES_CLOSED
+

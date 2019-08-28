@@ -4,11 +4,11 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Conv2D, Flatten, Dense, Activation, Dropout, MaxPooling2D
 from keras.optimizers import Adam
-import tensorflow
+from matplotlib import pyplot as plt
 
 HEIGHT = 26
 WIDTH = 34
-
+TRAINED_PATH = '../trained_models/trained_left_eye_detector.hdf5'
 
 def readCsv(path):
     with open(path, 'r') as f:
@@ -46,8 +46,8 @@ def readCsv(path):
         return imgs, tgs
 
 
-#make the convolution neural network
-def makeModel():
+# make the convolution neural network
+def generate_model():
     model = Sequential()
     model.add(Conv2D(32, (3,3), padding = 'same', input_shape=(HEIGHT, WIDTH,1)))
     model.add(Activation('relu'))
@@ -71,28 +71,73 @@ def makeModel():
 
 
 def train():
-    x_train, y_train = readCsv('../res/dataset.csv')
+    x, y = readCsv('../res/dataset.csv')
 
     # scale the values of the images between 0 and 1
-    x_train = x_train.astype('float32')
-    x_train /= 255
+    x = x.astype('float32')
+    x /= 255
 
-    model = makeModel()
+    x_train = x[0:2500]
+    x_test = x[2500:]
+
+    y_train = y[0:2500]
+    y_test = y[2500:]
+
+    model = generate_model()
     
     # do some data augmentation
-    aughmented_data = ImageDataGenerator(
+    augmented_data = ImageDataGenerator(
         rotation_range=10,
         width_shift_range=0.2,
         height_shift_range=0.2,
+        data_format='channels_last'
     )
-    aughmented_data.fit(x_train)
+    # aughmented_data.fit(x_train)
+
+    batch_size = 40
+    epochs = 50
 
     # train the model
-    model.fit_generator(aughmented_data.flow(x_train, y_train, batch_size=32),
-                        steps_per_epoch=len(x_train) / 32, epochs=50)
+    history = model.fit_generator(augmented_data.flow(x_train, y_train, batch_size=batch_size),
+                                   steps_per_epoch=int(np.ceil(x_train.shape[0] / float(batch_size))),
+                                   epochs=epochs,
+                                   validation_data=(x_test, y_test),
+                                   workers=4)
 
     # save the model
-    model.save('../trained_models/trained_left_eye_detector.hdf5')
+    model.save(TRAINED_PATH)
+
+    model.evaluate(x_test, y_test)
+
+    # Loss Curves
+    plt.figure(figsize=[8, 6])
+    plt.plot(history.history['loss'], 'r', linewidth=3.0)
+    plt.plot(history.history['val_loss'], 'b', linewidth=3.0)
+    plt.legend(['Training loss', 'Validation Loss'], fontsize=18)
+    plt.xlabel('Epochs ', fontsize=16)
+    plt.ylabel('Loss', fontsize=16)
+    plt.title('Loss Curves', fontsize=16)
+
+    # Accuracy Curves
+    plt.figure(figsize=[8, 6])
+    plt.plot(history.history['acc'], 'r', linewidth=3.0)
+    plt.plot(history.history['val_acc'], 'b', linewidth=3.0)
+    plt.legend(['Training Accuracy', 'Validation Accuracy'], fontsize=18)
+    plt.xlabel('Epochs ', fontsize=16)
+    plt.ylabel('Accuracy', fontsize=16)
+    plt.title('Accuracy Curves', fontsize=16)
+
+    plt.show()
 
 
-train()
+def load_trained_model():
+    """
+    Loads and returns the trained closed/open eye classification model.
+    :return: A trained closed/open eye classification model.
+    """
+    model = generate_model()
+    model.load_weights(TRAINED_PATH)
+    return model
+
+
+# train()
