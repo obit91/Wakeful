@@ -5,6 +5,10 @@ import numpy as np
 EYES_OPEN = 'open'
 EYES_CLOSED = 'closed'
 
+# The prediction threshold is very low because there are almost no false-positives for open eye detection, On the other
+# hand, closed eye detection amounts to values far below 0.1.
+PREDICTION_THRESHOLD = 0.1
+
 
 def get_path(file_name): return cv2.data.haarcascades + file_name
 
@@ -76,7 +80,7 @@ def predict_eyes(trained_model, left_eye, right_eye):
     """
     Predicts whether the eyes are open or closed.
     The prediction is based on the sum of predictions of both the left and the right eyes.
-    :param: trained_model: A trained model that classifies if eyes are closed or open.
+    :param trained_model: A trained model that classifies if eyes are closed or open.
     :param left_eye: The left eye of a grayscale face.
     :param right_eye: The right eye of a grayscale face.
     :return: 'open' if the eyes are open, 'closed' otherwise.
@@ -84,7 +88,7 @@ def predict_eyes(trained_model, left_eye, right_eye):
     left_prediction = trained_model.predict(left_eye)
     right_prediction = trained_model.predict(right_eye)
     # print('[left, right]: [%s %s]' % (left_prediction, right_prediction))
-    if left_prediction + right_prediction > 0.2:
+    if left_prediction + right_prediction > PREDICTION_THRESHOLD:
         return EYES_OPEN
     else:
         return EYES_CLOSED
