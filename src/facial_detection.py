@@ -28,8 +28,9 @@ def detect_face_and_eyes(img, gray):
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
     eyes = list()
     roi_gray = None
+    face_dims = None
     if len(faces) > 0:
-        (x, y, w, h) = faces[0]
+        face_dims = (x, y, w, h) = faces[0]
         # cv2.rectangle(img,(x, y), (x+w,y+h), (255, 0, 0), 2)
         roi_gray = gray[y:y+h, x:x+w]
         roi_color = img[y:y+h, x:x+w]
@@ -37,7 +38,7 @@ def detect_face_and_eyes(img, gray):
         # for (ex, ey, ew, eh) in eyes:
             # cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (0, 255, 0), 2)
 
-    return img, roi_gray, eyes
+    return img, roi_gray, eyes, face_dims
 
 
 def reshape_eyes_for_model(roi_gray, left_eye, right_eye):
@@ -93,3 +94,96 @@ def predict_eyes(trained_model, left_eye, right_eye):
     else:
         return EYES_CLOSED
 
+
+def mouth_detection(original_frame, face_dims):
+    """
+    Detects the mouth within a face.
+    :param original_frame: The original frame (before grayscale and crop).
+    :param face_dims: (x, y, w, h) dimensions of a face.
+    :return:
+    """
+    if face_dims is None:
+        return 0, original_frame
+
+    (x, y, w, h) = face_dims
+
+    # Isolate the ROI as the mouth region
+    width_one_corner = int((x + (w / 4)))
+    width_other_corner = int(x + ((3 * w) / 4))
+    height_one_corner = int(y + (11 * h / 16))
+    height_other_corner = int(y + h)
+
+    # Indicate the region of interest as the mouth by highlighting it in the window.
+    cv2.rectangle(original_frame, (width_one_corner, height_one_corner), (width_other_corner, height_other_corner),
+                  (0, 0, 255), 2)
+
+    # mouth region
+    mouth_region = original_frame[height_one_corner:height_other_corner, width_one_corner:width_other_corner]
+
+    # Area of the bottom half of the face rectangle
+    rect_area = (w * h) / 2
+
+    ratio = 0
+    if len(mouth_region) > 0:
+        ratio = mouth_threshold(mouth_region, rect_area)
+
+    return ratio, original_frame
+
+
+def mouth_threshold(mouth_region, rect_area):
+    """
+    Thresholds the image and converts it to binary
+    :param mouth_region: Mouth region within the face (a slice of the face).
+    :param rect_area: The area of the bottom half of the face.
+    :return: A ratio between the mouth and the face.
+    """
+    imgray = cv2.equalizeHist(cv2.cvtColor(mouth_region, cv2.COLOR_BGR2GRAY))
+    ret, thresh = cv2.threshold(imgray, 64, 255, cv2.THRESH_BINARY)
+
+    # Finds contours in a binary image
+    # Constructs a tree like structure to hold the contours
+    # Contouring is done by having the contoured region made by of small rectangles and storing only the end points
+    # of the rectangle
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    return_value = calculate_contours(mouth_region, contours)
+
+    # return_value[0] => second_max_count
+    # return_value[1] => Area of the contoured region.
+    # second_max_count = return_value[0]
+    contour_area = return_value[1]
+
+    ratio = contour_area / rect_area
+
+    # Draw contours in the image passed. The contours are stored as vectors in the array.
+    # -1 indicates the thickness of the contours. Change if needed.
+    # if isinstance(second_max_count, np.ndarray) and len(second_max_count) > 0:
+    #    cv2.drawContours(mouth_region, [second_max_count], 0, (255, 0, 0), -1)
+
+    return ratio
+
+
+def calculate_contours(image, contours):
+    """
+    Find the second largest contour in the ROI;
+    Largest is the contour of the bottom half of the face.
+    Second largest is the lips and mouth when yawning.
+    """
+    cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
+    max_area = 0
+    second_max = 0
+    max_count = 0
+    secondmax_count = 0
+    for i in contours:
+        count = i
+        area = cv2.contourArea(count)
+        if max_area < area:
+            second_max = max_area
+            max_area = area
+            secondmax_count = max_count
+            max_count = count
+        elif (second_max < area):
+            second_max = area
+            secondmax_count = count
+
+    return [secondmax_count, second_max]

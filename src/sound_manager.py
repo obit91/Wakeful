@@ -22,6 +22,11 @@ class SoundManager(object):
         Makes an annoying sound to wake up a sleeping driver.
         """
         if self.sleep_detected:
+            # play a number of beeps to alert the driver.
+            frequency = 2500  # Set Frequency To 2500 Hertz
+            duration = 2000  # Set Duration To 2000 ms == 2 second
+            winsound.Beep(frequency, duration)
+        else:
             # play a constant annoying sound to wake the driver up.
             frequency = 2500  # Set Frequency To 2500 Hertz
             no_freq = 37
@@ -32,8 +37,3 @@ class SoundManager(object):
                     winsound.Beep(frequency, duration)
                 else:
                     winsound.Beep(no_freq, duration)
-        else:
-            # play a number of beeps to alert the driver.
-            frequency = 2500  # Set Frequency To 2500 Hertz
-            duration = 2000  # Set Duration To 2000 ms == 2 second
-            winsound.Beep(frequency, duration)
