@@ -47,18 +47,25 @@ while True:
         if ratio > YAWN_RATIO:
             yawn_frames = 2 * fps
 
+        prev_closed_counter = closed_counter
 
-
-
+        result = None
         if len(eyes) == 2:
             left_eye = eyes[0]
             right_eye = eyes[1]
             left_eye_resized, right_eye_resized = reshape_eyes_for_model(roi_gray, left_eye, right_eye)
             result = predict_eyes(trained_model, left_eye_resized, right_eye_resized)
+        elif len(eyes) == 1:
+            eye = eyes[0]
+            left_eye_resized, right_eye_resized = reshape_eyes_for_model(roi_gray, eye, eye)
+            result1 = predict_eyes(trained_model, left_eye_resized, right_eye_resized)
+            result2 = predict_eyes(trained_model, right_eye_resized, left_eye_resized)
+            if result1 == EYES_OPEN or result2 == EYES_OPEN:
+                result = EYES_OPEN
+            else:
+                result = EYES_CLOSED
 
-            prev_closed_counter = closed_counter
-
-
+        if result is not None:
             if result == EYES_CLOSED:
                 closed_counter += 1
                 open_counter -= 1
