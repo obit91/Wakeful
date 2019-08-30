@@ -1,5 +1,5 @@
 import cv2
-from facial_detection import detect_face_and_eyes, mouth_detection, reshape_eyes_for_model, predict_eyes
+from facial_detection import detect_face_and_eyes, yawn_detection, reshape_eyes_for_model, predict_eyes
 from facial_detection import EYES_OPEN, EYES_CLOSED
 from generate_eyes_model import generate_model, TRAINED_PATH
 from sound_manager import SoundManager
@@ -37,7 +37,7 @@ while True:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         new_frame, roi_gray, eyes, face_dims = detect_face_and_eyes(frame, gray)
-        ratio, new_frame = mouth_detection(new_frame, face_dims)
+        ratio, new_frame = yawn_detection(new_frame, face_dims)
 
         if ratio > YAWN_RATIO:
             yawn_frames = fps

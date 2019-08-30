@@ -31,12 +31,12 @@ def detect_face_and_eyes(img, gray):
     face_dims = None
     if len(faces) > 0:
         face_dims = (x, y, w, h) = faces[0]
-        # cv2.rectangle(img,(x, y), (x+w,y+h), (255, 0, 0), 2)
+        cv2.rectangle(img,(x, y), (x+w,y+h), (255, 0, 0), 2)
         roi_gray = gray[y:y+h, x:x+w]
         roi_color = img[y:y+h, x:x+w]
         eyes = eye_cascade.detectMultiScale(roi_gray)
-        # for (ex, ey, ew, eh) in eyes:
-            # cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (0, 255, 0), 2)
+        for (ex, ey, ew, eh) in eyes:
+            cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (0, 255, 0), 2)
 
     return img, roi_gray, eyes, face_dims
 
@@ -95,7 +95,7 @@ def predict_eyes(trained_model, left_eye, right_eye):
         return EYES_CLOSED
 
 
-def mouth_detection(original_frame, face_dims):
+def yawn_detection(original_frame, face_dims):
     """
     Detects the mouth within a face.
     :param original_frame: The original frame (before grayscale and crop).
