@@ -37,10 +37,18 @@ while True:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         new_frame, roi_gray, eyes, face_dims = detect_face_and_eyes(frame, gray)
-        ratio, new_frame = yawn_detection(new_frame, face_dims)
+
+        if yawn_frames == 0:
+            ratio, new_frame = yawn_detection(new_frame, face_dims)
+        else:
+            ratio = 0
+            yawn_frames = max(yawn_frames - 1, 0)
 
         if ratio > YAWN_RATIO:
-            yawn_frames = fps
+            yawn_frames = 2 * fps
+
+
+
 
         if len(eyes) == 2:
             left_eye = eyes[0]
@@ -49,6 +57,7 @@ while True:
             result = predict_eyes(trained_model, left_eye_resized, right_eye_resized)
 
             prev_closed_counter = closed_counter
+
 
             if result == EYES_CLOSED:
                 closed_counter += 1
@@ -63,8 +72,8 @@ while True:
                     closed_counter = 0
                     open_counter = 0
 
-            closed_counter = 0 if closed_counter < 0 else closed_counter
-            open_counter = 0 if open_counter < 0 else open_counter
+            closed_counter = max(closed_counter, 0)
+            open_counter = max(open_counter, 0)
 
             print('[open, closed, ratio] - [%s, %s, %s]' % (open_counter, closed_counter, ratio))
 
