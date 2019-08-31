@@ -4,6 +4,7 @@ from facial_detection import EYES_OPEN, EYES_CLOSED
 from generate_eyes_model import generate_model, TRAINED_PATH
 from sound_manager import SoundManager
 import os
+import time
 
 CAPTURED = '../captured/'
 YAWN_RATIO = 0.06
@@ -13,7 +14,7 @@ if not os.path.isdir(CAPTURED):
 
 
 cap = cv2.VideoCapture(0)
-fps = cap.get(cv2.CAP_PROP_FPS)
+fps = 20 # default value, will be changed.
 cap.set(3, 640)  # set Width
 cap.set(4, 480)  # set Height
 
@@ -28,6 +29,9 @@ closed_counter = 0
 open_counter = 0
 sleep_frames = 0
 yawn_frames = 0
+
+start = time.time()
+end = None
 
 while True:
     ret, frame = cap.read()
@@ -59,11 +63,13 @@ while True:
             eye = eyes[0]
             left_eye_resized, right_eye_resized = reshape_eyes_for_model(roi_gray, eye, eye)
             result1 = predict_eyes(trained_model, left_eye_resized, right_eye_resized)
-            result2 = predict_eyes(trained_model, right_eye_resized, left_eye_resized)
-            if result1 == EYES_OPEN or result2 == EYES_OPEN:
+        #    result2 = predict_eyes(trained_model, right_eye_resized, left_eye_resized)
+            if result1 == EYES_OPEN: # or result2 == EYES_OPEN:
                 result = EYES_OPEN
-            else:
+            elif face_dims is not None:
                 result = EYES_CLOSED
+        elif len(eyes) == 0 and face_dims is not None:
+            result = EYES_CLOSED
 
         if result is not None:
             if result == EYES_CLOSED:
@@ -103,11 +109,13 @@ while True:
 
         k = cv2.waitKey(30) & 0xff
         if k == 27:  # press 'ESC' to quit
+            end = time.time()
             break
     else:
         break
 
 if ret:
+    fps = len(frames) / (end - start)
     out = cv2.VideoWriter(CAPTURED + 'project.avi', cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
     for i in range(len(frames)):
         out.write(frames[i])
