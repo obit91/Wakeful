@@ -142,7 +142,7 @@ def mouth_threshold(mouth_region, rect_area):
     :return: A ratio between the mouth and the face.
     """
     imgray = cv2.equalizeHist(cv2.cvtColor(mouth_region, cv2.COLOR_BGR2GRAY))
-    ret, thresh = cv2.threshold(imgray, 50, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(imgray, 64, 255, cv2.THRESH_BINARY)
 
     # Finds contours in a binary image
     # Constructs a tree like structure to hold the contours
