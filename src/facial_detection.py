@@ -7,7 +7,7 @@ EYES_CLOSED = 'closed'
 
 # The prediction threshold is very low because there are almost no false-positives for open eye detection, On the other
 # hand, closed eye detection amounts to values far below 0.1.
-PREDICTION_THRESHOLD = 0.1
+PREDICTION_THRESHOLD = 0.5
 
 
 def get_path(file_name): return cv2.data.haarcascades + file_name
@@ -86,13 +86,17 @@ def predict_eyes(trained_model, left_eye, right_eye):
     :param right_eye: The right eye of a grayscale face.
     :return: 'open' if the eyes are open, 'closed' otherwise.
     """
-    left_prediction = trained_model.predict(left_eye)
-    right_prediction = trained_model.predict(right_eye)
-    # print('[left, right]: [%s %s]' % (left_prediction, right_prediction))
-    if left_prediction + right_prediction > PREDICTION_THRESHOLD:
+    left_prediction = trained_model.predict(left_eye)[0]
+    right_prediction = trained_model.predict(right_eye)[0]
+    print('[left, right] -> %s, %s' % (left_prediction, right_prediction))
+    closed_preds = (left_prediction[0], right_prediction[0])
+    opened_preds = (left_prediction[1], right_prediction[1])
+    if opened_preds[0] + opened_preds[1] > 0.7:
         return EYES_OPEN
-    else:
+    elif closed_preds[0] + closed_preds[0] > 1.5:
         return EYES_CLOSED
+    else:
+        return None
 
 
 def yawn_detection(original_frame, face_dims):
@@ -138,7 +142,7 @@ def mouth_threshold(mouth_region, rect_area):
     :return: A ratio between the mouth and the face.
     """
     imgray = cv2.equalizeHist(cv2.cvtColor(mouth_region, cv2.COLOR_BGR2GRAY))
-    ret, thresh = cv2.threshold(imgray, 64, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(imgray, 50, 255, cv2.THRESH_BINARY)
 
     # Finds contours in a binary image
     # Constructs a tree like structure to hold the contours

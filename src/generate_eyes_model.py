@@ -4,13 +4,22 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Conv2D, Flatten, Dense, Activation, Dropout, MaxPooling2D
 from keras.optimizers import Adam
+import tensorflow as tf
 from matplotlib import pyplot as plt
 
 HEIGHT = 26
 WIDTH = 34
 TRAINED_PATH = '../trained_models/trained_left_eye_detector.hdf5'
+PLOTS_PATH = '../plots/'
+CSV_DATASET_PATH = '../res/dataset.csv'
 
-def readCsv(path):
+
+def read_eyes_csv_dataset(path):
+    """
+    Reads a CSV of closed/open left eye dataset, converts it to images and caches the result.
+    :param path: Path do CSV.
+    :return: Images and labels of closed/open eyes.
+    """
     with open(path, 'r') as f:
         # read the scv file with the dictionary format
         reader = csv.DictReader(f)
@@ -46,32 +55,32 @@ def readCsv(path):
         return imgs, tgs
 
 
-# make the convolution neural network
 def generate_model():
+    """
+    Generates a CNN that classifies closed and open eyes.
+    :return: A model that classifies closed and open eyes.
+    """
     model = Sequential()
-    model.add(Conv2D(32, (3,3), padding = 'same', input_shape=(HEIGHT, WIDTH,1)))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2,2)))
-    model.add(Conv2D(64, (2,2), padding= 'same'))
-    model.add(Activation('relu'))
+    model.add(Conv2D(32, (3, 3), padding='same', input_shape=(HEIGHT, WIDTH,1),  activation=tf.nn.relu))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(128, (2,2), padding='same'))
-    model.add(Activation('relu'))
+    model.add(Conv2D(64, (2, 2), padding='same', activation=tf.nn.relu))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(128, (2, 2), padding='same', activation=tf.nn.relu))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
     model.add(Flatten())
-    model.add(Dense(512))
-    model.add(Activation('relu'))
-    model.add(Dense(512))
-    model.add(Activation('relu'))
-    model.add(Dense(1))
-    model.add(Activation('sigmoid'))
-    model.compile(optimizer=Adam(lr=0.001), loss='binary_crossentropy', metrics=['accuracy'])
+    model.add(Dense(512, activation=tf.nn.relu))
+    model.add(Dense(512, activation=tf.nn.relu))
+    model.add(Dense(2, activation=tf.nn.softmax))
+    model.compile(optimizer=Adam(lr=0.001), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
 
 def train():
-    x, y = readCsv('../res/dataset.csv')
+    """
+    Trains the generated model and saves the result plots.
+    """
+    x, y = read_eyes_csv_dataset(CSV_DATASET_PATH)
 
     # scale the values of the images between 0 and 1
     x = x.astype('float32')
@@ -109,7 +118,7 @@ def train():
 
     model.evaluate(x_test, y_test)
 
-    # Loss Curves
+    # Loss Curve
     plt.figure(figsize=[8, 6])
     plt.plot(history.history['loss'], 'r', linewidth=3.0)
     plt.plot(history.history['val_loss'], 'b', linewidth=3.0)
@@ -117,17 +126,17 @@ def train():
     plt.xlabel('Epochs ', fontsize=16)
     plt.ylabel('Loss', fontsize=16)
     plt.title('Loss Curves', fontsize=16)
+    plt.savefig(PLOTS_PATH + 'loss.png', dpi=300, bbox_inches='tight')
 
-    # Accuracy Curves
+    # Accuracy Curve
     plt.figure(figsize=[8, 6])
     plt.plot(history.history['acc'], 'r', linewidth=3.0)
     plt.plot(history.history['val_acc'], 'b', linewidth=3.0)
     plt.legend(['Training Accuracy', 'Validation Accuracy'], fontsize=18)
     plt.xlabel('Epochs ', fontsize=16)
     plt.ylabel('Accuracy', fontsize=16)
-    plt.title('Accuracy Curves', fontsize=16)
-
-    plt.show()
+    plt.title('Accuracy Curve', fontsize=16)
+    plt.savefig(PLOTS_PATH + 'accuracy.png', dpi=300, bbox_inches='tight')
 
 
 def load_trained_model():
@@ -140,4 +149,4 @@ def load_trained_model():
     return model
 
 
-# train()
+train()

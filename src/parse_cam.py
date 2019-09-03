@@ -88,7 +88,7 @@ while True:
             closed_counter = max(closed_counter, 0)
             open_counter = max(open_counter, 0)
 
-            print('[open, closed, ratio] - [%s, %s, %s]' % (open_counter, closed_counter, ratio))
+            # print('[open, closed, ratio] - [%s, %s, %s]' % (open_counter, closed_counter, ratio))
 
         frame_with_msg = new_frame
         # add a sleeping warning to the frame
